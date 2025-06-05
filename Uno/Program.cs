@@ -178,4 +178,14 @@ for (int i = 0; i <= int.Parse(manyPlayer); i++)
     players.Add(new Player(playerName));
 }
 GameController gameController = new GameController(players);
+// Console.BackgroundColor = ConsoleColor.DarkMagenta;
 gameController.StartGame();
+while (true)
+{
+    gameController.HandleTurn();
+    gameController.GetNextPlayer();
+}
+// Console.WriteLine($"Game Over! {gameController.GetCurretColor()} is the current color.");
+// // gameController.SetWildCard();
+// gameController.ApplyEffect();
+// Console.WriteLine($"Game Over! {gameController.GetCurretColor()} is the current color.");

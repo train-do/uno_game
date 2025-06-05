@@ -1,4 +1,5 @@
 using Uno.Enum;
+using Uno.Interfaces;
 using Uno.models;
 using Uno.utils;
 
@@ -8,7 +9,7 @@ public class Display
 {
     private static int width = Console.WindowWidth;
     private static int height = Console.WindowHeight;
-    public static void SerializeHandCard(CardColor color, CardValue value, int row)
+    public static void SerializeHandCard(CardColor color, CardValue value, int row, int idxCard = 0, bool isPlayable = false)
     {
         Console.ForegroundColor = ConsoleColor.Black;
         switch (color)
@@ -35,6 +36,7 @@ public class Display
         switch (row)
         {
             case 0:
+
                 Console.Write($"┌{string.Concat(Enumerable.Repeat("-", 4))}┐");
                 Console.ResetColor();
                 break;
@@ -91,27 +93,53 @@ public class Display
                 Console.Write($"└{string.Concat(Enumerable.Repeat("-", 4))}┘");
                 Console.ResetColor();
                 break;
+            case 5:
+                Console.BackgroundColor = isPlayable && idxCard != 0 ? ConsoleColor.Cyan : ConsoleColor.Black;
+                Console.ForegroundColor = isPlayable && idxCard != 0 ? ConsoleColor.Black : ConsoleColor.White;
+                Console.Write($"{string.Concat(Enumerable.Repeat(" ", 2))}{(idxCard == 0 ? " " : idxCard)}{string.Concat(Enumerable.Repeat(" ", 3))}");
+                Console.ResetColor();
+                break;
+            // case 6:
+            //     Console.BackgroundColor = isPlayable && idxCard != 0 ? ConsoleColor.DarkMagenta : ConsoleColor.Black;
+            //     Console.Write($"{string.Concat(Enumerable.Repeat(" ", 3))}{string.Concat(Enumerable.Repeat(" ", 3))}");
+            //     Console.ResetColor();
+            //     break;
             default:
                 Console.ResetColor();
                 break;
         }
     }
-    public static void DrawHandCard(List<Card> cards)
+    public static void DrawHandCard(List<ICard> cards, List<int>? listPlayableCards = null)
     {
-        Console.WriteLine("\nHand Cards:");
-        for (int i = 0; i < 5; i++)
+        Console.CursorVisible = false;
+        int rowCount = 7;
+        for (int row = 0; row < rowCount; row++)
         {
-            foreach (var item in cards)
+            for (int col = 0; col < cards.Count; col++)
             {
-                SerializeHandCard(item.Color, item.Value, i);
+                Card card = (Card)cards[col];
+                bool isPlayable = listPlayableCards != null && listPlayableCards.Contains(col);
+                SerializeHandCard(card.Color, card.Value, row, col + 1, isPlayable);
             }
             Console.WriteLine();
         }
     }
+    // {
+    //     Console.WriteLine("\nHand Cards:");
+    //     for (int i = 0; i < 7; i++)
+    //     {
+    //         for (int j = 1; j <= cards.Count; j++)
+    //         {
+    //             if (j == 2) SerializeHandCard(cards[j - 1].Color, cards[j - 1].Value, i, j, true);
+    //             else SerializeHandCard(cards[j - 1].Color, cards[j - 1].Value, i, j);
+    //         }
+    //         Console.WriteLine();
+    //     }
+    // }
     public static void DrawPileCard(Card card)
     {
         Console.WriteLine("\nPile Cards:");
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 7; i++)
         {
             SerializeHandCard(card.Color, card.Value, i);
             Console.WriteLine();
@@ -190,7 +218,7 @@ public class Display
             if (j >= unoCards.Count) j = 0;
             Console.SetCursorPosition(0, height / 4 - 5);
             Console.Write(welcomeMessage[i] + "\n\n\n");
-            for (int k = 0; k < 5; k++)
+            for (int k = 0; k < 7; k++)
             {
                 int currentY = Console.CursorTop;
                 Console.SetCursorPosition(30, currentY);
