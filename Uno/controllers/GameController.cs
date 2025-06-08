@@ -19,10 +19,10 @@ public class GameController
     IPlayer _currentPlayer;
     Direction _currentDirection = Direction.Clockwise;
     CardColor _currentColor;
-    Action<IPlayer, ICard>? _onCardPlayed;
+    Action _onCardPlayed;
     Action<IPlayer>? _onGameOver;
     int _cardToDraw;
-    bool _specialEffect;
+    bool isGameOver;
 
     public GameController(List<IPlayer> players)
     {
@@ -93,35 +93,22 @@ public class GameController
                 ReverseDirection();
                 break;
             case CardValue.DrawTwo:
+                _cardToDraw += 2;
+                break;
             case CardValue.WildDrawFour:
-                DrawCardToPlayer((Player)_currentPlayer, _cardToDraw);
+                _cardToDraw += 4;
                 break;
         }
     }
     public bool CheckValidMove(Card cardToPlay)
     {
-        if (_specialEffect)
-        {
-            
-        }
         if (cardToPlay.Value == CardValue.WildDrawFour) return true;
-        if (cardToPlay.Value == CardValue.DrawTwo && (_discardPile[0].Value == CardValue.DrawTwo || _currentColor == cardToPlay.Color)) return true;
-        if (_discardPile[0].Value != CardValue.DrawTwo && _discardPile[0].Value != CardValue.WildDrawFour && cardToPlay.Value == CardValue.Wild) return true;
-        if (_currentColor == cardToPlay.Color || _discardPile[0].Value == cardToPlay.Value) return true;
+        if (_cardToDraw == 0 && (_currentColor == cardToPlay.Color || cardToPlay.Color == CardColor.Wild || _discardPile[0].Value == cardToPlay.Value)) return true;
+        if (_cardToDraw != 0 && _discardPile[0].Value == cardToPlay.Value) return true;
+        // if (_cardToDraw != 0 && (_currentColor == cardToPlay.Color || cardToPlay.Color == CardColor.Wild) && _discardPile[0].Value == cardToPlay.Value) return true;
+        // if (cardToPlay.Value == CardValue.DrawTwo && (_discardPile[0].Value == CardValue.DrawTwo || _currentColor == cardToPlay.Color)) return true;
+        // if (_discardPile[0].Value != CardValue.DrawTwo && _discardPile[0].Value != CardValue.WildDrawFour && cardToPlay.Value == CardValue.Wild) return true;
         return false;
-    }
-    public void GetNextPlayer()
-    {
-        int currentIndex = _players.IndexOf(_currentPlayer);
-        if (_currentDirection == Direction.Clockwise)
-        {
-            currentIndex = (currentIndex + 1) % _players.Count;
-        }
-        else
-        {
-            currentIndex = (currentIndex - 1 + _players.Count) % _players.Count;
-        }
-        _currentPlayer = _players[currentIndex];
     }
     public List<int> GetPlayableCards()
     {
@@ -136,30 +123,60 @@ public class GameController
         }
         return playableCards;
     }
+    public void GetNextPlayer()
+    {
+        int currentIndex = _players.IndexOf(_currentPlayer);
+        if (_currentDirection == Direction.Clockwise)
+        {
+            currentIndex = (currentIndex + 1) % _players.Count;
+        }
+        else
+        {
+            currentIndex = (currentIndex - 1 + _players.Count) % _players.Count;
+        }
+        _currentPlayer = _players[currentIndex];
+    }
     public void HandleTurn()
     {
-        // Console.Clear();
-        var options = new JsonSerializerOptions
-        {
-            Converters = { new JsonStringEnumConverter() },
-            WriteIndented = true
-        };
-        Console.WriteLine(JsonSerializer.Serialize(_currentPlayer, options));
-        Console.WriteLine($"Current Color: {_currentColor}");
-        Console.WriteLine($"Current Card: {_discardPile[0]}");
-        // Console.WriteLine("Your Hand:");
+        Console.Clear();
+        // var options = new JsonSerializerOptions
+        // {
+        //     Converters = { new JsonStringEnumConverter() },
+        //     WriteIndented = true
+        // };
+        // Console.WriteLine(JsonSerializer.Serialize(_currentPlayer, options));
+        // Console.WriteLine($"Current Color: {_currentColor}");
+        // Console.WriteLine($"Current Card: {_discardPile[0]}");
+        // Console.WriteLine($"Current Card To Draw: {_cardToDraw}");
+        // Dashboard();
+        _onCardPlayed.Invoke();
+        Console.WriteLine();
         Display.DrawPileCard((Card)_discardPile[0]);
+        Console.WriteLine($"{(_discardPile[0].Color == CardColor.Wild ? $"Color : {_currentColor}" : "")}\n");
+        Console.WriteLine($"Hand Card Player {_currentPlayer.Name}");
         Display.DrawHandCard(_currentPlayer.Hand, GetPlayableCards());
-        Console.Write("Choose a card (1, 2, ..., n) or type 'draw' to draw a card: ");
-
-        string? input = Console.ReadLine();
-        if (input?.ToLower() == "draw")
+        bool canPlay = CanPlayerPlay((Player)_currentPlayer);
+        if (!canPlay)
         {
-            DrawCardToPlayer((Player)_currentPlayer, 1);
+            Console.Write("No card can be played, press any key to continue (will draw card)");
+            Console.ReadKey();
+            DrawCardToPlayer((Player)_currentPlayer, _cardToDraw != 0 ? _cardToDraw : 1);
+            _cardToDraw = 0;
+            GetNextPlayer();
+            return;
+        }
+        Console.Write("Choose a card (1, 2, ..., n) or type 'draw' : ");
+        string? input = Console.ReadLine();
+        string[] inputWwithUno = input.Split(" ");
+        if (inputWwithUno[0]?.ToLower() == "draw")
+        {
+            DrawCardToPlayer((Player)_currentPlayer, _cardToDraw != 0 ? _cardToDraw : 1);
+            _cardToDraw = 0;
+            GetNextPlayer();
             return;
         }
         int cardIndex;
-        if (int.TryParse(input, out cardIndex))
+        if (int.TryParse(inputWwithUno[0], out cardIndex))
         {
             cardIndex -= 1;
             if (cardIndex >= 0 && cardIndex < _currentPlayer.Hand.Count)
@@ -168,23 +185,37 @@ public class GameController
                 if (CheckValidMove(selectedCard))
                 {
                     RemoveCardFromPlayer(selectedCard);
-                    ApplyEffect();
                     InsertDiscardPile(selectedCard);
+                    ApplyEffect();
                 }
                 else
                 {
-                    Console.WriteLine("Invalid move. Try again.");
+                    Console.WriteLine("Invalid move. Try again. Press any key..");
+                    Console.ReadKey();
+                    return;
                 }
             }
             else
             {
-                Console.WriteLine("Invalid input. Out Range.");
+                Console.WriteLine("Invalid input. Out Range. Press any key..");
+                Console.ReadKey();
+                return;
             }
         }
         else
         {
-            Console.WriteLine("Invalid input. Try again.");
+            Console.WriteLine("Invalid input. Try again. Press any key..");
+            Console.ReadKey();
+            return;
         }
+        HandleUnoCall(inputWwithUno);
+
+        if (_currentPlayer.Hand.Count == 0)
+        {
+            isGameOver = true;
+            return;
+        }
+        GetNextPlayer();
     }
     internal void StartGame()
     {
@@ -194,10 +225,16 @@ public class GameController
         ShuffleDeck(_drawPile.Cards);
         foreach (IPlayer player in _players)
         {
-            DrawCardToPlayer((Player)player, 7);
+            DrawCardToPlayer((Player)player, 1);
         }
         SetupInitialDiscard();
         IntializeTurn();
+        _onCardPlayed = Dashboard;
+        while (!isGameOver)
+        {
+            HandleTurn();
+            RestockDrawPile();
+        }
         // Console.WriteLine("Game started!");
         // Console.WriteLine($"{JsonSerializer.Serialize(_currentPlayer)}, {JsonSerializer.Serialize(_currentColor)}, {JsonSerializer.Serialize(_discardPile[0])}, {JsonSerializer.Serialize(_currentDirection)}, {JsonSerializer.Serialize(_players)}, {_drawPile.Cards.Count} cards in draw pile.");
     }
@@ -284,8 +321,80 @@ public class GameController
     //     _drawPile.Cards.FindIndex((card) => card.Value == CardValue.Wild || card.Value == CardValue.WildDrawFour);
     //     _discardPile.Insert(0, _drawPile.Cards.Find((card) => card.Value == CardValue.Wild || card.Value == CardValue.WildDrawFour));
     // }
-    public CardColor GetCurretColor()
+    // public void Dashboard1()
+    // {
+    //     string s1 = "";
+    //     string s2 = "";
+    //     string s3 = "";
+    //     for (int i = 0; i < _players.Count; i++)
+    //     {
+    //         if (_players[i].Name == _currentPlayer.Name)
+    //         {
+    //             Console.BackgroundColor = ConsoleColor.DarkCyan;
+    //         }
+    //         string name = $"Name : {_players[i].Name}";
+    //         Console.Write($"{name}{string.Concat(Enumerable.Repeat(" ", 20 - name.Length))}");
+    //         Console.ResetColor();
+    //         Console.Write("  ");
+    //     }
+    // }
+    public void Dashboard()
     {
-        return _currentColor;
+        int width = Console.WindowWidth;
+        int height = Console.WindowHeight;
+        Console.SetCursorPosition(width * 2 / 5, 0);
+        for (int i = 0; i < _players.Count; i++)
+        {
+            // Console.WriteLine($"{_players[i].Name == _currentPlayer.Name}{_players[i].Name} == {_currentPlayer.Name}");
+            if (_players[i].Name == _currentPlayer.Name)
+            {
+                Console.BackgroundColor = ConsoleColor.DarkCyan;
+            }
+            string name = $"Name : {_players[i].Name}";
+            Console.Write($"{name}{string.Concat(Enumerable.Repeat(" ", 20 - name.Length))}");
+            Console.ResetColor();
+            Console.Write("  ");
+        }
+        Console.WriteLine();
+        int currentY = Console.CursorTop;
+        Console.SetCursorPosition(width * 2 / 5, currentY);
+        for (int i = 0; i < _players.Count; i++)
+        {
+            if (_players[i].Name == _currentPlayer.Name)
+            {
+                Console.BackgroundColor = ConsoleColor.DarkCyan;
+            }
+            string qty = $"Cards : {_players[i].Hand.Count}";
+            Console.Write($"{qty}{string.Concat(Enumerable.Repeat(" ", 20 - qty.Length))}");
+            Console.ResetColor();
+            Console.Write("  ");
+        }
+        Console.WriteLine();
+        currentY = Console.CursorTop;
+        Console.SetCursorPosition(width * 2 / 5, currentY);
+        Console.Write($"Direction : {(_currentDirection == Direction.Clockwise ? ">>>>" : "<<<<")}\n");
+        // currentY = Console.CursorTop;
+        // Console.SetCursorPosition(width * 2 / 5, currentY);
+        Console.Write($"Discard Pile : {_discardPile.Count}    Draw Pile : {_drawPile.Cards.Count}{(_cardToDraw != 0 ? $"    Card to drawn : {_cardToDraw}" : "")}");
+    }
+    public bool CanPlayerCallUno()
+    {
+        return _currentPlayer.Hand.Count == 1 ? true : false;
+    }
+    public void HandleUnoCall(string[] input)
+    {
+        bool isUno = CanPlayerCallUno();
+        // Console.WriteLine($"{input.Length <= 1 && isUno}  {input.Length} {isUno}");
+        if (input.Length <= 1 && isUno)
+        {
+            DrawCardToPlayer((Player)_currentPlayer, 2);
+            return;
+        }
+        if (input.Length <= 1) return;
+        if ((isUno && input[1].ToLower() != "uno") || (!isUno && input[1].ToLower() == "uno"))
+        {
+            DrawCardToPlayer((Player)_currentPlayer, 2);
+            return;
+        }
     }
 }

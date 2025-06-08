@@ -96,7 +96,9 @@ public class Display
             case 5:
                 Console.BackgroundColor = isPlayable && idxCard != 0 ? ConsoleColor.Cyan : ConsoleColor.Black;
                 Console.ForegroundColor = isPlayable && idxCard != 0 ? ConsoleColor.Black : ConsoleColor.White;
-                Console.Write($"{string.Concat(Enumerable.Repeat(" ", 2))}{(idxCard == 0 ? " " : idxCard)}{string.Concat(Enumerable.Repeat(" ", 3))}");
+                string strIdx = idxCard.ToString();
+                int padLeft = (6 - strIdx.Length) / 2;
+                Console.Write($"{string.Concat(Enumerable.Repeat(" ", padLeft))}{(idxCard == 0 ? " " : idxCard)}{string.Concat(Enumerable.Repeat(" ", 6 - padLeft - strIdx.Length))}");
                 Console.ResetColor();
                 break;
             // case 6:
@@ -142,7 +144,10 @@ public class Display
         for (int i = 0; i < 7; i++)
         {
             SerializeHandCard(card.Color, card.Value, i);
-            Console.WriteLine();
+            if (i != 6)
+            {
+                Console.WriteLine();
+            }
         }
     }
     public static void DrawLoading()
@@ -174,12 +179,12 @@ public class Display
         Console.Clear();
         Console.CursorVisible = false;
 
-        string[] welcomeMessage = new string[]
+        List<string[]> welcomeMessage = new List<string[]>
         {
-            Frames.play3,
-            Frames.play4,
-            Frames.play5,
-            Frames.play6
+            SerializeFrame(Frames.play3),
+            SerializeFrame(Frames.play4),
+            SerializeFrame(Frames.play5),
+            SerializeFrame(Frames.play6)
         };
         List<List<Card>> unoCards = Frames.unoCards;
         int i = 0;
@@ -214,22 +219,36 @@ public class Display
         while (true)
         {
             Console.Clear();
-            if (i >= welcomeMessage.Length) i = 0;
+            if (i >= welcomeMessage.Count) i = 0;
             if (j >= unoCards.Count) j = 0;
-            Console.SetCursorPosition(0, height / 4 - 5);
-            Console.Write(welcomeMessage[i] + "\n\n\n");
+            int currentY;
+            Console.SetCursorPosition(0, 7);
+            Console.WriteLine();
+            for (int k = 0; k < welcomeMessage[i].Length; k++)
+            {
+                currentY = Console.CursorTop;
+                Console.SetCursorPosition((width - welcomeMessage[i][k].Length) / 2, currentY);
+                Console.Write(welcomeMessage[i][k] + "\n");
+            }
+            Console.WriteLine("\n\n");
             for (int k = 0; k < 7; k++)
             {
-                int currentY = Console.CursorTop;
-                Console.SetCursorPosition(30, currentY);
+                currentY = Console.CursorTop;
+                Console.SetCursorPosition((width - 35) / 2, currentY);
                 foreach (var card in unoCards[j])
                 {
                     SerializeHandCard(card.Color, card.Value, k);
                 }
                 Console.WriteLine();
             }
-            Console.SetCursorPosition(width / 2, height - 7);
-            Console.Write($"Press any {Frames.key} to start...");
+            string[] anyKey = SerializeFrame(Frames.key);
+            foreach (string item in anyKey)
+            {
+                currentY = Console.CursorTop;
+                Console.SetCursorPosition(64, currentY);
+                Console.WriteLine(item);
+            }
+            // Console.Write($"{Frames.key}");
             i++;
             j++;
             Thread.Sleep(300);
@@ -245,5 +264,9 @@ public class Display
             // }
             Thread.Sleep(100);
         }
+    }
+    public static string[] SerializeFrame(string frames)
+    {
+        return frames.Split("\n");
     }
 }
